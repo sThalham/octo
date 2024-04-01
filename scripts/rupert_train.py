@@ -311,6 +311,10 @@ def main(_):
         with timer("dataset"):
             batch = next(train_data_iter)
 
+        print(batch["observation"].shape)
+        print(batch["task"].shape)
+        print(batch["observation"]["pad_mask"].shape)
+
         with timer("train"):
             train_state, update_info = train_step(train_state, batch)
 
