@@ -64,6 +64,43 @@ At the moment we provide the following model versions:
 
 ## Examples
 
+Custom example using the Elephant Robotics myCobot280
+
+Install the Python MyCobot API:
+```bash
+pip install pymycobot --upgrade
+```
+
+Calibrate the robot:
+Power On: Connect the power cable to the myCobot 280 and secure it to the base. The unit will automatically turn on.
+
+Basic Calibration: Navigate to the menus and select “Basic Calibration” to initiate the process.
+
+Segment Alignment: Align the notches on each segment of the arm to their respective positions. For each segment:
+Release the servo while the segment is aligned by hand.
+Lock the servo when the next segment is being calibrated.
+
+Notch Alignment: Pay special attention to the rotating segment on the head of the myCobot 280, ensuring its notch is aligned properly.
+
+Test Run: After completing the calibration sequence, run a test to check each servo’s movement. The myCobot 280 will move each segment slightly and then return it to its correct position.
+
+
+Connect the robot's base and camera separately via USB. In the terminal within the octo conda environment execute the following lines to gain user permissions to access the USB port, log out of the session, and in again:
+```bash
+sudo usermod -a -G dialout $USER
+gnome-session-quit --no-prompt
+su $USER
+```
+
+In order to receive Python commands the robot's M5 interface (the transponder/USB-UART page) needs to be open.
+
+
+
+
+
+
+
+
 We provide simple [example scripts](examples) that demonstrate how to use and finetune Octo models,
 as well as how to use our data loader independently. We provide the following examples:
 
