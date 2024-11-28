@@ -26,6 +26,6 @@ def main():
     # Example 4: Get current joint angles
     angles = robbi.get_angles()
     print(f"Current joint angles: {angles}")
-    
+
 if __name__ == "__main__":
     main()

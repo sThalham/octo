@@ -20,9 +20,18 @@ def main():
         print("Failed to connect. Check the USB connection.")
         return
 
-    # Disconnect
-    print("Disconnecting...")
-    robbi.release_all_servos()
+    robbi.clear_error_information()
+    print('is the robot powered on? ', robbi.is_power_on())
+    print('Checking for errors: ', robbi.get_error_information())
+
+
+    print("Moving to home position...")
+    robbi.send_angles([-4.74, 18.54, -11.25, -77.6, 11.33, -63.45], 50)  # Angles in degrees, speed = 50
+    time.sleep(3)  # Wait for movement to complete
+
+    angles = robbi.get_angles()
+    print(f"Current joint angles: {angles}")
+
     print("Done!")
 
 if __name__ == "__main__":
