@@ -11,6 +11,7 @@ import os
 import cv2
 from absl import app, flags, logging
 import click
+from scipy.spatial.transform import Rotation as R
 
 from transformers import AutoModel
 from octo.model.octo_model import OctoModel
@@ -118,9 +119,7 @@ def main(_):
             observations=observations,
             tasks=tasks,
             rng=rng,
-            unnormalization_statistics=pretrained_model.dataset_statistics[
-                "bridge_dataset"
-            ]["action"],
+            unnormalization_statistics=pretrained_model.dataset_statistics["bridge_dataset"]["action"],
         )
         # remove batch dim
         return actions[0]
@@ -150,7 +149,7 @@ def main(_):
 
                 goal_eep = FLAGS.goal_eep
                 #goal_eep = state_to_eep(_eep, 0)
-                mycobot.set_gripper_state(1, speed=50)  # open gripper
+                mycobot.set_gripper_state(0, speed=50)  # open gripper
 
                 move_status = None
                 #while move_status != WidowXStatus.SUCCESS:
@@ -165,6 +164,9 @@ def main(_):
                 frame = preprocess_image(frame)
                 obs = {"image_primary": frame, "timestep_pad_mask": np.array([[True]])}
                 goal = jax.tree_map(lambda x: x[None], obs)
+
+                #cv2.imshow("img_view", frame)
+                #cv2.waitKey(0)
 
             mycobot.send_angles(initial_eep, 50)
             time.sleep(3)
@@ -206,7 +208,7 @@ def main(_):
 
                 ret, frame = cam_cap.read()
                 frame = preprocess_image(frame)
-                frame= frame[np.newaxis, ...]
+                frame= frame[np.newaxis, :, :, :]
                 timestep_pad = np.array([True, True])
                 #timestep_pad = timestep_pad[np.newaxis, ...]
                 print(timestep_pad.shape)
@@ -216,8 +218,8 @@ def main(_):
                 goals.append(goal_image)
 
                 if FLAGS.show_image:
-                    bgr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    cv2.imshow("img_view", bgr_img)
+                    #bgr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imshow("img_view", frame[0, :, :, :])
                     cv2.waitKey(20)
 
                 # get action
@@ -232,15 +234,33 @@ def main(_):
 
                 obs = {"image_primary": frame, "timestep_pad_mask": timestep_pad}
 
+                #ACTION_DIM_LABELS = ['x', 'y', 'z', 'yaw', 'pitch', 'roll', 'grasp'] #https://github.com/octo-models/octo/blob/main/examples/01_inference_pretrained.ipynb
+                #x, y, z, qx, qy, qz, qw is the end-effector pose expressed in the robot base frame
                 action = np.array(policy_fn(obs, task), dtype=np.float64)
                 print("forward pass time: ", time.time() - forward_pass_time)
+                print('action: ', action.shape)
 
                 # perform environment step
                 start_time = time.time()
 
-                print(action[0][:6])
+                # only using first observation for now
+                action = np.sum(action, axis=0)
+                tra_delta = action[:3]
+                rot_delta = action[3:6]
+                #quat = action[0][3:]
+                #quat_wxyz = np.array([quat[3], quat[0], quat[1], quat[2]])
                 #obs, _, _, truncated, _ = env.step(action)
-                mycobot.send_angles(list(action[0][:6]), 50)
+                #r = R.from_quat(quat_wxyz)
+                #rot = r.as_euler('xyz', degrees=True)
+                print('pose: ', tra_delta, rot_delta)
+
+                tcp_robo = mycobot.get_coords()
+                tcp_delta = np.array([tra_delta[0], tra_delta[1], tra_delta[2], rot_delta[2], rot_delta[1], rot_delta[0]])
+                print('tcp; tcp_delta: ', tcp_robo, tcp_delta)
+                tcp = tcp_robo + tcp_delta
+                print('tcp_target: ', tcp)
+                mycobot.send_coords(tcp.tolist(), 50, 0)
+                #mycobot.send_angles(list(action[0][:6]), 50)
                 print("step time: ", time.time() - start_time)
 
                 t += 1
