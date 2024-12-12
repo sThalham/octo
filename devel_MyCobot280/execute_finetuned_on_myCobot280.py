@@ -136,6 +136,8 @@ def main(_):
     goal_image = jnp.zeros((im_size, im_size, 3), dtype=np.uint8)
     goal_instruction = ""
 
+    mycobot.set_gripper_state(0, speed=50)
+
     # goal sampling loop
     while True:
         modality = click.prompt(
@@ -149,7 +151,6 @@ def main(_):
 
                 goal_eep = FLAGS.goal_eep
                 #goal_eep = state_to_eep(_eep, 0)
-                mycobot.set_gripper_state(0, speed=50)  # open gripper
 
                 move_status = None
                 #while move_status != WidowXStatus.SUCCESS:
@@ -244,9 +245,20 @@ def main(_):
                 start_time = time.time()
 
                 # only using first observation for now
-                action = np.sum(action, axis=0)
-                tra_delta = action[:3]
-                rot_delta = action[3:6]
+                #action_sum = np.sum(action, axis=0) #* 5
+                action_sum = action[0]
+                tra_delta = action_sum[:3] * 1000.0
+                rot_delta = action_sum[3:6]
+                grip_state = action[0][6]
+
+                mat_tcp = np.eye(4)
+
+                xW_to_mc280 = np.eye(4)
+                xW_to_mc280[1, 1] = -1
+                xW_to_mc280[2, 2] = -1
+                ur5_to_mc280 = np.eye(4)
+                ur5_to_mc280[0, 0] = -1
+                ur5_to_mc280[1, 1] = -1
                 #quat = action[0][3:]
                 #quat_wxyz = np.array([quat[3], quat[0], quat[1], quat[2]])
                 #obs, _, _, truncated, _ = env.step(action)
@@ -255,11 +267,13 @@ def main(_):
                 print('pose: ', tra_delta, rot_delta)
 
                 tcp_robo = mycobot.get_coords()
+                print("tcp in base: ", tcp_robo)
                 tcp_delta = np.array([tra_delta[0], tra_delta[1], tra_delta[2], rot_delta[2], rot_delta[1], rot_delta[0]])
                 print('tcp; tcp_delta: ', tcp_robo, tcp_delta)
                 tcp = tcp_robo + tcp_delta
                 print('tcp_target: ', tcp)
                 mycobot.send_coords(tcp.tolist(), 50, 0)
+                mycobot.set_gripper_state(int(grip_state), speed=50)  # open gripper
                 #mycobot.send_angles(list(action[0][:6]), 50)
                 print("step time: ", time.time() - start_time)
 
